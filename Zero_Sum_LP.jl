@@ -1,6 +1,6 @@
 include("../I-Big-M/I_Big_M.jl")
 
-function solve(A::Matrix{T},eps::Number=convert(promote_type(T,Float64),1e-5),verbose::Bool=true,genLatex::Bool=true) where T <: Number
+function solve(A::Union{Matrix{T}, Transpose{T, M}, Adjoint{T, M}}; eps::Number=convert(promote_type(T,Float64),1e-5),verbose::Bool=true,genLatex::Bool=true) where {T, M <: AbstractMatrix}
 
     #                                                #
     # Matrix A contains the losses of the row player #
@@ -17,10 +17,9 @@ function solve(A::Matrix{T},eps::Number=convert(promote_type(T,Float64),1e-5),ve
     _c = -ones(T, n_col, 1);
     _t =  ones(Int64, n_row);
     
-    obj, x, y, base = I_Big_M(_A, _b, _c, _t, eps, verbose, genLatex);
+    obj, x, base = I_Big_M(_A, _b, _c, _t, eps, verbose, genLatex);
     
     x /= sum(x);
-    y /= sum(y);
     
-    return x, y;
+    return x;
 end
