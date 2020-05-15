@@ -1,5 +1,5 @@
-include("../Zero_Sum_LP.jl")
-include("../../ArithmeticNonStandarNumbersLibrary/BAN.jl")
+include("../src/Zero_Sum_LP.jl")
+include("../../ArithmeticNonStandarNumbersLibrary/src/BAN.jl")
 using .BAN
 
 n = 100;

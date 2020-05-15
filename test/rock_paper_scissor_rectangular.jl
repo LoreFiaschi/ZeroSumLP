@@ -1,5 +1,5 @@
-include("../Zero_Sum_LP.jl")
-include("../../ArithmeticNonStandarNumbersLibrary/BAN.jl")
+include("../src/Zero_Sum_LP.jl")
+include("../../ArithmeticNonStandarNumbersLibrary/src/BAN.jl")
 using .BAN
 
 
@@ -18,9 +18,11 @@ A[3,1] =  one(Ban) + 2*(one(Ban)>>1); A[3,2] = -one(Ban) - 2*(one(Ban)>>1);
 A[4,1] =  0.5*one(Ban) - one(Ban)>>1; A[4,2] = -one(Ban) - 2*one(Ban)>>1; A[4,3] = 0.5*one(Ban) + one(Ban)>>1;
 #
 
-x = solve(-A', genLatex = true);
+tol = (one(Ban)>>(length(one(Ban).num)))*1.e-5;
+
+x = solve(-A', verbose = true, eps=tol) #, genLatex = true);
 print("\tx: "); println(x);
 println("");
 
-y = solve(A, genLatex = true);
+y = solve(A, verbose = true, eps=tol) #, genLatex = true);
 print("\ty: "); println(y);
