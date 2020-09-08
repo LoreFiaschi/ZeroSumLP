@@ -1,4 +1,5 @@
 include("../../I-Big-M/src/I_Big_M.jl")
+using Combinatorics
 
 function solve(A::Union{Matrix{T}, Transpose{T, M}, Adjoint{T, M}}; 
                 eps::Number=convert(promote_type(T,Float64),1e-5),verbose::Bool=false,genLatex::Bool=false) where {T, M <: AbstractMatrix}
@@ -29,87 +30,7 @@ end
 function solve_patrolling(P::Vector{T}, D::AbstractMatrix{Bool}, τ::Integer;
                 eps::Number=convert(promote_type(T,Float64),1e-5),verbose::Bool=false,genLatex::Bool=false) where T<:Number
 
-	n = length(P);
-	
-	######################
-	# Variables creation #
-	######################
 
-	states = combinations([i for i=1:n],τ-1);
-	to_keep = [];
-	
-	# delete (some) unconsistent states
-	for (i,s) in enumerate(states)
-	
-		consistent = false;
-		
-		s_permutation = permutations(s,τ-1);
-
-		for s_p in s_permutation
-			
-			consistent = false
-		
-			for j=1:τ-2
-				!D[s_p[j+1],s_p[j]] && break;
-				j==τ-2 && any(x->x==true, D[setdiff(1:n,s_p),s_p[end]]) && (consistent = true)
-			end
-			consistent && break
-		end
-		
-		consistent && push!(to_keep,i); 
-	end
-	
-	states = collect(states)[to_keep];
-	
-	n_v = length(to_keep);
-	
-	
-	
-	
-	
-	######################
-	# Payoff constraints #
-	######################
-	
-	
-	A = zeros(T,n,n_v);
-	
-	for i=1:n_v
-		A[setdiff(1:n,states[i]),i] = copy(P[setdiff(1:n,states[i])]);
-	end
-    
-    # Make all the matrix entries non-negative
-    any(x->x<0, A) && (A = A.-minimum(A));
-   
-    b = ones(T,n, 1);
-	
-	t = ones(Int64,n);
-	
-	
-	
-	
-	#################
-	# Cost function #
-	#################
-	
-	
-	c = zeros(T,n_v,1);
-	c[1:n_v] .= -1;
-	
-	A = convert(Matrix{Ban},A);
-	b = convert(Matrix{Ban},b);
-	c = convert(Matrix{Ban},c);
-	
-	
-	obj, x, base = I_Big_M(A, b, c, t, eps=eps, verbose=verbose, genLatex=genLatex);
-	
-	@show states
-	println("");
-	
-	return x/sum(x)
-
-
-#=
 
 #### with disposition
 
@@ -118,8 +39,8 @@ function solve_patrolling(P::Vector{T}, D::AbstractMatrix{Bool}, τ::Integer;
 	######################
 	# Variables creation #
 	######################
-
-	states = multiset_permutations([i for i=1:n],τ-1);
+	
+	states = multiset_permutations([i for i=1:n for j=1:τ-1],τ-1);
 	to_keep = [];
 	
 	# delete (some) unconsistent states
@@ -139,7 +60,9 @@ function solve_patrolling(P::Vector{T}, D::AbstractMatrix{Bool}, τ::Integer;
 	
 	n_v = length(to_keep);
 	
-	
+	# get the states without transitions
+	states_no_transition = unique(map(x->x[2:end], states));
+	n_s = length(states_no_transition);
 	
 	
 	
@@ -148,18 +71,32 @@ function solve_patrolling(P::Vector{T}, D::AbstractMatrix{Bool}, τ::Integer;
 	######################
 	
 	
-	A = zeros(T,n,n_v);
+	A = zeros(T,n+n_s,n_v);
 	
 	for i=1:n_v
-		A[setdiff(1:n,states[i]),i] = copy(P[setdiff(1:n,states[i])]);
+		A[setdiff(1:n,states[i][2:end]),i] = copy(P[setdiff(1:n,states[i][2:end])]);
 	end
     
     # Make all the matrix entries non-negative
-    any(x->x<0, A) && (A = A.-minimum(A));
-   
-    b =  ones(T,n, 1);
+    any(x->x<0, A[1:n,:]) && (A[1:n,:] = A[1:n,:].-minimum(A[1:n,:]));
 	
-	t = ones(Int64,n);
+	
+	
+	
+	##################
+	# Flux balancing #
+	##################
+	
+	for i=n+1:n+n_s
+		A[i,findall(x->x[2:end]==states_no_transition[i-n], states)] .= 1;
+		A[i,findall(x->x[1:end-1]==states_no_transition[i-n], states)] .= -1;
+	end
+	
+	
+   
+    b =  [ones(T,n, 1); zeros(T,n_s,1)];
+	
+	t = [ones(Int64,n); zeros(Int64,n_s)];
 	
 	
 	
@@ -169,9 +106,8 @@ function solve_patrolling(P::Vector{T}, D::AbstractMatrix{Bool}, τ::Integer;
 	#################
 	
 	
-	c = zeros(T,n_v,1);
-	c[1:n_v] .= -1;
-	
+	c = -ones(T,n_v,1);
+
 	A = convert(Matrix{Ban},A);
 	b = convert(Matrix{Ban},b);
 	c = convert(Matrix{Ban},c);
@@ -179,12 +115,13 @@ function solve_patrolling(P::Vector{T}, D::AbstractMatrix{Bool}, τ::Integer;
 	
 	obj, x, base = I_Big_M(A, b, c, t, eps=eps, verbose=verbose, genLatex=genLatex);
 	
+	#=
 	@show states
 	println("");
+	=#
 	
-	return x/sum(x)
+	return x/sum(x), states
 	
-=#	
 	
 	
 	
