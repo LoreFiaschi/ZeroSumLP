@@ -31,7 +31,6 @@ function solve_patrolling(P::Vector{T}, D::AbstractMatrix{Bool}, τ::Integer;
                 eps::Number=convert(promote_type(T,Float64),1e-5),verbose::Bool=false,genLatex::Bool=false) where T<:Number
 
 
-
 #### with disposition
 
 	n = length(P);
@@ -40,7 +39,7 @@ function solve_patrolling(P::Vector{T}, D::AbstractMatrix{Bool}, τ::Integer;
 	# Variables creation #
 	######################
 	
-	states = multiset_permutations([i for i=1:n for j=1:τ-1],τ-1);
+	states = multiset_permutations([i for i=1:n for j=1:τ],τ);
 	to_keep = [];
 	
 	# delete (some) unconsistent states
@@ -48,11 +47,11 @@ function solve_patrolling(P::Vector{T}, D::AbstractMatrix{Bool}, τ::Integer;
 	
 		consistent = true;
 
-		for j=1:τ-2
+		for j=1:τ-1
 			!D[s[j+1],s[j]] && (consistent=false; break;)
 		end
 		
-		consistent && all(x->x==false, D[setdiff(1:n,s),s[end]]) && (consistent=false);
+		#consistent && all(x->x==false, D[setdiff(1:n,s),s[end]]) && (consistent=false);
 		consistent && push!(to_keep,i); 
 	end
 	
@@ -74,11 +73,11 @@ function solve_patrolling(P::Vector{T}, D::AbstractMatrix{Bool}, τ::Integer;
 	A = zeros(T,n+n_s,n_v);
 	
 	for i=1:n_v
-		A[setdiff(1:n,states[i][2:end]),i] = copy(P[setdiff(1:n,states[i][2:end])]);
+		A[setdiff(1:n,states[i][2:end]).+n_s,i] = copy(P[setdiff(1:n,states[i][2:end])]);
 	end
     
     # Make all the matrix entries non-negative
-    any(x->x<0, A[1:n,:]) && (A[1:n,:] = A[1:n,:].-minimum(A[1:n,:]));
+    any(x->x<0, A[n_s+1:n_s+n,:]) && (A[n_s+1:n_s+n,:] = A[n_s+1:n_s+n,:].-minimum(A[n_s+1:n_s+n,:]));
 	
 	
 	
@@ -87,16 +86,16 @@ function solve_patrolling(P::Vector{T}, D::AbstractMatrix{Bool}, τ::Integer;
 	# Flux balancing #
 	##################
 	
-	for i=n+1:n+n_s
-		A[i,findall(x->x[2:end]==states_no_transition[i-n], states)] .= 1;
-		A[i,findall(x->x[1:end-1]==states_no_transition[i-n], states)] .= -1;
+	for i=1:n_s
+		A[i,findall(x->x[2:end]==states_no_transition[i], states)] .= 1;
+		A[i,findall(x->x[1:end-1]==states_no_transition[i], states)] .= -1;
 	end
 	
 	
    
-    b =  [ones(T,n, 1); zeros(T,n_s,1)];
+    b =  [zeros(T,n_s,1); ones(T,n, 1)];
 	
-	t = [ones(Int64,n); zeros(Int64,n_s)];
+	t = [zeros(Int64,n_s); ones(Int64,n)];
 	
 	
 	
@@ -121,45 +120,6 @@ function solve_patrolling(P::Vector{T}, D::AbstractMatrix{Bool}, τ::Integer;
 	=#
 	
 	return x/sum(x), states
-	
-	
-	
-	
-
-#=
-
-### with permutations
-
-	encoding = [i for i=1:τ];
-	encoding = [encoding; τ*ones(n-τ)];
-	
-	states = multiset_permutations(encoding,n);
-	to_keep = [];
-
-	# delete (some) unconsistent states
-	for (i,s) in enumerate(states)
-	
-		consistent = true;
-		idx_in = findfirst(x->x==1,s);
-
-		for j=2:τ-1
-			idx_out = findfirst(x->x==j,s);
-			!D[idx_out,idx_in] && (consistent=false; break;)
-			idx_in = idx_out;
-		end
-		
-		consistent && all(x->x==false, D[findall(x->x==τ, s),idx_in]) && (consistent=false);
-		consistent && push!(to_keep,i); 
-	end
-	
-	#states = Vector{Vector{Integer}}(undef,length(to_keep));
-	#for i in eachindex(to_keep)
-	#	states[i] = nthperm(encoding,i);
-	#end
-
-	states = collect(states)[to_keep];
-	
-	=#
 
 end
 
