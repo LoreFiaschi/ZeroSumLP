@@ -27,8 +27,9 @@ function solve(A::Union{Matrix{T}, Transpose{T, M}, Adjoint{T, M}};
 end
 
 
-function solve_patrolling(P::Vector{T}, D::AbstractMatrix{Bool}, τ::Integer;
-                eps::Number=convert(promote_type(T,Float64),1e-5),verbose::Bool=false,genLatex::Bool=false) where T<:Number
+function solve_patrolling(P::Vector{T}, D::AbstractMatrix{Bool}, τ::Integer, n_attacks::Integer=1;
+                eps::Number=convert(promote_type(T,Float64),1e-5),verbose::Bool=false,genLatex::Bool=false,
+				showprogress::Bool=false) where T<:Number
 
 
 #### with disposition
@@ -65,6 +66,19 @@ function solve_patrolling(P::Vector{T}, D::AbstractMatrix{Bool}, τ::Integer;
 	
 	
 	
+	####################
+	# Attacker targets #
+	####################
+	
+	if n_attacks > 1
+		targets = combinations([i for i=1:n], n_attacks);
+		n = length(targets);
+	else
+		targets = [i for i=1:n];
+	end
+
+
+
 	######################
 	# Payoff constraints #
 	######################
@@ -73,7 +87,9 @@ function solve_patrolling(P::Vector{T}, D::AbstractMatrix{Bool}, τ::Integer;
 	A = zeros(T,n+n_s,n_v);
 	
 	for i=1:n_v
-		A[setdiff(1:n,states[i][2:end]).+n_s,i] = copy(P[setdiff(1:n,states[i][2:end])]);
+		for (j,target) in enumerate(targets)
+			A[j+n_s,i] = sum(P[setdiff(target, states[i])]);
+		end
 	end
     
     # Make all the matrix entries non-negative
@@ -112,7 +128,7 @@ function solve_patrolling(P::Vector{T}, D::AbstractMatrix{Bool}, τ::Integer;
 	c = convert(Matrix{Ban},c);
 	
 	
-	obj, x, base = I_Big_M(A, b, c, t, eps=eps, verbose=verbose, genLatex=genLatex);
+	obj, x, base = I_Big_M(A, b, c, t, eps=eps, verbose=verbose, genLatex=genLatex, showprogress=showprogress);
 	
 	#=
 	@show states
